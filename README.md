@@ -1,6 +1,6 @@
 
 ### 0. Install
-we use chaier as deep learning framework. Install some packeage by using requirement.txt.
+we use chainer as deep learning framework. Please install some packeage by using requirement.txt.
 
 
 ### 1. Data imbalance
