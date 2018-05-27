@@ -15,6 +15,7 @@ def make_list():
     f_val = open("../data/val.txt", "w")
 
     ratio_val = 0.15
+    ratio_test = 0.15
 
     for folder in folders:
         if os.path.isdir(TRAIN_PATH + folder) == False:
