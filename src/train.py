@@ -166,23 +166,23 @@ def main():
   
     # Initialize the model to train
     print("----- LOAD MODEL -----")
-    model = archs[args.arch]()
-    if args.initmodel:
+    model = archs[args.arch]() # ネットワーク構造を定義
+    if args.initmodel: # 学習済みモデルがある場合
         print('Load model from', args.initmodel)
-        chainer.serializers.load_npz(args.initmodel, model)
-    if args.gpu >= 0:
-        chainer.cuda.get_device(args.gpu).use()  # Make the GPU current
-        model.to_gpu()
+        chainer.serializers.load_npz(args.initmodel, model) # 学習済みモデルがを読み込み
+    if args.gpu >= 0: # gpuを使う場合
+        chainer.cuda.get_device(args.gpu).use()  # 計算に使うgpuを指定
+        model.to_gpu() # 学習にgpuを使う
 
     # Load the datasets and mean file
     print("----- DATASET -----")
     resize_shape = (250,250)
-    mean = np.load(args.mean).transpose(1,2,0)
-    mean = cv2.resize(mean, (resize_shape))
-    mean = np.array(mean).transpose(2,0,1)
+    mean = np.load(args.mean).transpose(1,2,0) # 平均画像を読み込み、(height, width, chanel)に並び替え(opencvの画像フォーマット)
+    mean = cv2.resize(mean, (resize_shape)) # 平均画像をリサイズ
+    mean = np.array(mean).transpose(2,0,1) # 平均画像を(channel, height, width)に並び替え(chainerの画像フォーマット)
     
-    train = PreprocessedDataset(args.train, args.root, mean, model.insize, resize_shape=resize_shape)
-    val = PreprocessedDataset(args.val, args.root, mean, model.insize, False, resize_shape=resize_shape)
+    train = PreprocessedDataset(args.train, args.root, mean, model.insize, resize_shape=resize_shape) # trainデータセットの前処理
+    val = PreprocessedDataset(args.val, args.root, mean, model.insize, False, resize_shape=resize_shape) # validデータセットの前処理
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
     #train_iter = chainer.iterators.MultiprocessIterator(
@@ -190,27 +190,30 @@ def main():
     #val_iter = chainer.iterators.MultiprocessIterator(
     #    val, args.val_batchsize, repeat=False, n_processes=args.loaderjob)
 
-    train_iter = chainer.iterators.SerialIterator(
+    # trainデータのイテレータを作成
+    train_iter = chainer.iterators.SerialIterator( 
         train, args.batchsize)
+    # validデータのイテレータを作成
     val_iter = chainer.iterators.SerialIterator(
         val, args.val_batchsize, repeat=False, shuffle=False)
 
     # Set up an optimizer
     print("----- OPTIMIZER -----")
-    optimizer = chainer.optimizers.MomentumSGD(lr=0.01, momentum=0.9)
+    optimizer = chainer.optimizers.MomentumSGD(lr=0.01, momentum=0.9) # optimizerの設定
     optimizer.setup(model)
 
     # Set up a trainer
     updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), args.out)
 
-    val_interval = (10 if args.test else 100000), 'iteration'
-    log_interval = (10 if args.test else 1000), 'iteration'
+    val_interval = (10 if args.test else 100000), 'iteration' # validationするタイミングを設定
+    log_interval = (10 if args.test else 1000), 'iteration' # logを出すタイミングの設定
 
     # Copy the chain with shared parameters to flip 'train' flag only in test
     eval_model = model.copy()
     eval_model.train = False
 
+    # その他拡張モジュールの設定
     trainer.extend(extensions.Evaluator(val_iter, eval_model, device=args.gpu),
                    trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
